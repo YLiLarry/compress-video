@@ -84,6 +84,7 @@ printPWD = do
 
 printFFmpeg :: FFmpegProcess -> IO ()
 printFFmpeg proc = do
+   stdout `hSetBuffering` LineBuffering
    let h = errHandle proc
    total <- parseTime <$> grepDuration h
    while (\_-> ffmpegIsRunning proc <&&> notM (hIsEOF h)) $ do

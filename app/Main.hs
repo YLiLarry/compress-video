@@ -18,4 +18,4 @@ loadCfg :: FilePath -> IO LoadedCfg
 loadCfg path =
    case takeExtension path of
       ".h264" -> LoadedCfg <$> (load path :: IO H264)
-      otherwise -> error $ "undefined extension: " ++ show path
+      otherwise -> error $ "Undefined extension: " ++ show path
