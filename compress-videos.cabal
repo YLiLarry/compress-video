@@ -16,14 +16,12 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Lib
-                     , Cmd
                      , FFmpeg
                      , FFmpeg.Data.H264
                      , FFmpeg.Config
                      , FFmpeg.Process
   build-depends:       base >= 4.7 && < 5
                      , process
-                     , filepath
                      , directory
                      , aeson
                      , data-to-json-file
@@ -38,6 +36,7 @@ executable compress-videos-exe
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , compress-videos
+                     , filepath
   default-language:    Haskell2010
 
 test-suite compress-videos-test

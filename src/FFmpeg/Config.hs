@@ -1,14 +1,22 @@
-module FFmpeg.Config where
+{-# LANGUAGE ExistentialQuantification #-}
 
-import Cmd
--- import Data.Maybe
+module FFmpeg.Config where
 
 class Config a where
    makeArgs :: a -> [String]
-   config :: FilePath -> FilePath -> a
+   defaultCfg :: a
+   setIOFile :: a -> FilePath -> FilePath -> a
 
-   fullArgs :: CmdArgs -> a -> [String]
-   fullArgs _ a =
+   fullArgs :: a -> [String]
+   fullArgs a =
       ["-y"]
       ++ ["-nostdin"]
       ++ makeArgs a
+
+
+data LoadedCfg = forall a. (Config a) => LoadedCfg a
+
+instance Config LoadedCfg where
+   defaultCfg = undefined
+   makeArgs (LoadedCfg a) = makeArgs a
+   setIOFile (LoadedCfg a) i o = LoadedCfg $ setIOFile a i o
