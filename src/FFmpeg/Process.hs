@@ -7,7 +7,6 @@ import System.Exit
 import System.Directory
 import Control.Exception
 import Control.Monad
-import Cmd
 import Text.Regex
 import Control.Conditional hiding (when)
 import Data.Maybe
@@ -45,17 +44,17 @@ getFFmpegExitCode :: FFmpegProcess -> IO (Maybe ExitCode)
 getFFmpegExitCode = getProcessExitCode . procHandle
 
 
-ffmpeg :: Config a => CmdArgs -> a -> IO ()
-ffmpeg args conf = do
-   proc <- spawnFFmpeg args conf
+ffmpeg :: Config a => a -> IO ()
+ffmpeg conf = do
+   proc <- spawnFFmpeg conf
    printFFmpeg proc
       `catch` onExceptionKill proc
 
 
-spawnFFmpeg :: Config a => CmdArgs -> a -> IO FFmpegProcess
-spawnFFmpeg args config = do
+spawnFFmpeg :: Config a => a -> IO FFmpegProcess
+spawnFFmpeg config = do
    -- make arg
-   let p = (proc ffmpegPath $ fullArgs args config) {
+   let p = (proc ffmpegPath $ fullArgs config) {
         std_out = NoStream
       , std_err = CreatePipe
       , std_in  = NoStream

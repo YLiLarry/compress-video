@@ -6,9 +6,9 @@ import Lib
 
 
 test :: IO ()
-test = hspec $ do
+test = hspec $
    describe "save/load" $ do
-      let c = config "测试/test.in" "test/test.mp4" :: H264
+      let c = setIOFile (defaultCfg :: H264) "测试/test.in" "test/test.mp4"
       specify "save" $
          save "test/tmp/测试.h264" c
       specify "load" $ do

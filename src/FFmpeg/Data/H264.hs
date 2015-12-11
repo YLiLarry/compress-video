@@ -14,14 +14,14 @@ data H264 = H264 {
 
 
 instance Config H264 where
-   config input output = H264 {
-           h264In  = input
-         , h264Out = output
+   defaultCfg = H264 {
+           h264In  = ""
+         , h264Out = ""
          , h264RV  = "25"
          , h264CRF = "18"
       }
    makeArgs conf = ["-i", h264In conf, "-codec:v", "libx264", "-crf", h264CRF conf, h264Out conf]
-
+   setIOFile a inp outp = a {h264In = inp, h264Out = outp}
 
 instance SL H264
 instance ToJSON H264
