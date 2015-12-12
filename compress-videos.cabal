@@ -28,6 +28,7 @@ library
                      , regex-compat
                      , cond
                      , split
+                     , filepath
   default-language:    Haskell2010
 
 executable compress-videos-exe
