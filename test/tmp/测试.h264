@@ -1,1 +1,1 @@
-{"h264RV":"25","h264In":"测试/test.in","h264Out":"test/test.mp4","h264CRF":"18"}
+{"crf":"18","frameRate":"25","suffix":".mp4","prefix":"h264_","input":"","frames":null,"output":""}
