@@ -50,8 +50,7 @@ getFFmpegExitCode = getProcessExitCode . procHandle
 ffmpeg :: Config a => a -> IO ()
 ffmpeg conf = do
    proc <- spawnFFmpeg conf
-   printFFmpeg proc
-      `catch` onExceptionKill proc
+   printFFmpeg proc `catch` onExceptionKill proc
 
 
 spawnFFmpeg :: Config a => a -> IO FFmpegProcess
@@ -61,6 +60,7 @@ spawnFFmpeg config = do
         std_out = NoStream
       , std_err = CreatePipe
       , std_in  = NoStream
+      , create_group = True
    }
    -- print debug info
    printPWD
