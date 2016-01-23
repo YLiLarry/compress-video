@@ -29,7 +29,10 @@ waitForFFmpeg = waitForProcess
 
 
 killFFmpeg :: FFmpegProcess -> IO ()
-killFFmpeg ffp = terminateProcess (procHandle ffp)
+killFFmpeg ffp = do 
+   let h = procHandle ffp
+   interruptProcessGroupOf h
+   void $ waitForProcess h
 
 
 ffmpegIsRunning :: FFmpegProcess -> IO Bool
