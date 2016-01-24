@@ -9,9 +9,11 @@ import System.Environment
 import Control.Monad (void)
 import System.FilePath
 import Data.Maybe
+import System.IO
 
 main :: IO ()
 main = do
+   hSetBuffering stdout NoBuffering
    [inPath, outPath, confPath] <- getArgs
    conf <- loadCfg confPath
    info <- ffprobe inPath

@@ -66,8 +66,8 @@ spawnFFmpeg config probe = do
       , create_group = True
    }
    -- print debug info
-   printPWD
    printCmd $ cmdspec p
+   printPWD
    -- run process
    (_, _, Just errp, proc) <- createProcess p
 
