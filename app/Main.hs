@@ -1,7 +1,10 @@
 module Main where
 
-import Lib
-import FFmpeg
+import Data.SL
+import FFmpeg.Config
+import FFmpeg.Probe
+import FFmpeg.Process
+import FFmpeg.Data.H264
 import System.Environment
 import Control.Monad (void)
 import System.FilePath
@@ -9,9 +12,11 @@ import Data.Maybe
 
 main :: IO ()
 main = do
-   [input, output, conf] <- getArgs
-   file <- loadCfg conf
-   void $ ffmpeg $ setIOFile file input output
+   [inPath, outPath, confPath] <- getArgs
+   conf <- loadCfg confPath
+   info <- ffprobe inPath
+   void $ ffmpeg conf info  
+   -- setIOFile conf inPath outPath
 
 
 loadCfg :: FilePath -> IO LoadedCfg

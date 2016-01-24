@@ -1,1 +1,1 @@
-{"crf":"18","frameRate":"25","suffix":".mp4","prefix":"h264_","input":"","frames":null,"output":""}
+{"crf":18,"frameRate":{"tag":"Min","contents":25},"suffix":".mp4","prefix":"h264_","frames":{"tag":"Keep","contents":[]}}

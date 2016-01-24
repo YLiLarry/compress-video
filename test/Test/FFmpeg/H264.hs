@@ -2,8 +2,9 @@ module Test.FFmpeg.H264 where
 
 import Test.Hspec (hspec, specify, describe, shouldBe)
 
-import Lib
-
+import FFmpeg.Config as X
+import Data.SL
+import FFmpeg.Data.H264 as X
 
 test :: IO ()
 test = hspec $
