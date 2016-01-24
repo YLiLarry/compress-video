@@ -23,10 +23,10 @@ get (Max a) b = min a b
 
 
 keep :: (Eq a) => Scheme a -> Bool
-keep = (Keep /=)
+keep = (Keep ==)
 
 unless :: Bool -> [a] -> [a]
-unless b a = if b then a else []
+unless b a = if b then [] else a
 
 data H264 = H264 {
         frameRate :: Scheme Int
@@ -49,7 +49,7 @@ instance Config H264 where
          , suffix = ".mp4"
          , frames = Keep
          , bitRate      = Keep
-         , audioBitRate = Keep
+         , audioBitRate = Max $ 128 * 1000
          , height = Keep
          , width  = Keep
       }
@@ -58,9 +58,12 @@ instance Config H264 where
             ["-r:v", show $ get (frameRate conf) (P.frameRate probe)]
       ++ ["-i", input]
       ++ ["-codec:v", "libx264"]
+      ++ ["-strict", "-2", "-codec:a", "aac"]
       ++ ["-crf", show $ crf conf]
       ++ unless (keep $ bitRate conf) 
             ["-b:v", show $ get (bitRate conf) (P.bitRate probe)]
+      ++ unless (keep $ audioBitRate conf) 
+            ["-b:a", show $ get (audioBitRate conf) (P.audioBitRate probe)]
       ++ unless (keep $ frames conf) 
             ["-frames:v", show $ get (frames conf) (P.frames probe)]
       ++ unless (keep (width conf) && keep (height conf)) 
