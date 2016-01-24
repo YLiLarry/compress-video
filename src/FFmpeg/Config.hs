@@ -1,22 +1,23 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
 module FFmpeg.Config where
+   
+import FFmpeg.Probe
 
 class Config a where
-   makeArgs :: a -> [String]
+   makeArgs :: a -> Probe -> [String]
    defaultCfg :: a
-   setIOFile :: a -> FilePath -> FilePath -> a
 
-   fullArgs :: a -> [String]
-   fullArgs a =
+   fullArgs :: a -> Probe -> [String]
+   fullArgs a probe =
       ["-y"]
       ++ ["-nostdin"]
-      ++ makeArgs a
-
+      ++ makeArgs a probe
 
 data LoadedCfg = forall a. (Config a) => LoadedCfg a
 
 instance Config LoadedCfg where
    defaultCfg = undefined
-   makeArgs (LoadedCfg a) = makeArgs a
-   setIOFile (LoadedCfg a) i o = LoadedCfg $ setIOFile a i o
+   makeArgs (LoadedCfg a) probe = makeArgs a probe
+   
+   

@@ -1,5 +1,6 @@
 module FFmpeg.Process where
 
+import FFmpeg.Probe
 import FFmpeg.Config
 import System.Process
 import System.IO
@@ -47,16 +48,18 @@ getFFmpegExitCode :: FFmpegProcess -> IO (Maybe ExitCode)
 getFFmpegExitCode = getProcessExitCode . procHandle
 
 
-ffmpeg :: Config a => a -> IO ()
-ffmpeg conf = do
-   proc <- spawnFFmpeg conf
+ffmpeg :: Config a => a -> Probe -> IO ()
+ffmpeg conf probe = do
+   proc <- spawnFFmpeg conf probe
    printFFmpeg proc `catch` onExceptionKill proc
+   Just code <- getFFmpegExitCode proc
+   when (code /= ExitSuccess) $ error $ "ffmpeg returns" ++ show code
 
 
-spawnFFmpeg :: Config a => a -> IO FFmpegProcess
-spawnFFmpeg config = do
+spawnFFmpeg :: Config a => a -> Probe -> IO FFmpegProcess
+spawnFFmpeg config probe = do
    -- make arg
-   let p = (proc ffmpegPath $ fullArgs config) {
+   let p = (proc ffmpegPath $ fullArgs config probe) {
         std_out = NoStream
       , std_err = CreatePipe
       , std_in  = NoStream
