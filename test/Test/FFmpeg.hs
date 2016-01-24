@@ -25,6 +25,10 @@ test = hspec $ do
          let arg = (defaultCfg :: H264) {frameRate = Max 100, bitRate = Max 10} 
          let input = "test/test.in"
          ffmpeg arg =<< (ffprobe input)
+      it "audioBitRate = 10" $ do
+         let arg = (defaultCfg :: H264) {frameRate = Max 100, audioBitRate = Max 10} 
+         let input = "test/test.in"
+         ffmpeg arg =<< (ffprobe input)
       it "size = 10x10" $ do
          let arg = (defaultCfg :: H264) {frameRate = Max 100, height = Max 10, width = Max 10} 
          let input = "test/test.in"
@@ -46,7 +50,8 @@ test = hspec $ do
             printFFmpeg h
             throw UserInterrupt
          code <- getFFmpegExitCode h 
-         code `shouldSatisfy` isJust         
+         code `shouldSatisfy` isJust  
+                
    describe "FFProbe" $ do
       it "Read a video" $ do
          probe <- ffprobe "test/test.in"
