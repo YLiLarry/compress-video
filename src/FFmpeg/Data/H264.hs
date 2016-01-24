@@ -57,11 +57,11 @@ instance Config H264 where
          , width  = Keep
       }
    makeArgs conf probe = []
-      ++ unless (keep $ frameRate conf) 
-            ["-r:v", show $ get (frameRate conf) (P.frameRate probe)]
+      -- input
       ++ ["-i", input]
+      -- output
       ++ ["-codec:v", "libx264"]
-      ++ ["-strict", "-2", "-codec:a", "aac"]
+      ++ ["-strict", "-2", "-codec:a", "aac", "-async", "1000"]
       ++ when (keep $ bitRate conf) ["-crf", show $ crf conf]
       ++ unless (keep $ bitRate conf) 
             ["-b:v", printf "%dk" $ get (bitRate conf) (P.bitRate probe)]
@@ -73,6 +73,8 @@ instance Config H264 where
             ["-s:v", printf "%dx%d" 
                         (get (width conf) (P.width probe)) 
                         (get (height conf) (P.height probe))]
+      ++ unless (keep $ frameRate conf) 
+            ["-r:v", show $ get (frameRate conf) (P.frameRate probe)]
       ++ [output]
       where
          input = P.fpath probe

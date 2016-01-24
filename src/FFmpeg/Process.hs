@@ -70,7 +70,9 @@ spawnFFmpeg config probe = do
    printPWD
    -- run process
    (_, _, Just errp, proc) <- createProcess p
-
+   
+   errp `hSetEncoding` utf8
+   
    return FFmpegProcess {
         errHandle  = errp
       , procHandle = proc
@@ -90,7 +92,6 @@ printPWD = do
 
 printFFmpeg :: FFmpegProcess -> IO ()
 printFFmpeg proc = do
-   stdout `hSetBuffering` LineBuffering
    let h = errHandle proc
    total <- parseTime <$> grepDuration h
    while (\_-> ffmpegIsRunning proc <&&> notM (hIsEOF h)) $ do
