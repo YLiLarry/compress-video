@@ -6,6 +6,7 @@ import FFmpeg.Config
 import qualified FFmpeg.Probe as P
 import Data.SL
 import System.FilePath
+import Text.Printf
 
 data Scheme a = Fix a
               | Min a
@@ -15,11 +16,17 @@ data Scheme a = Fix a
 instance (ToJSON a) => ToJSON (Scheme a)
 instance (FromJSON a) => FromJSON (Scheme a)
 
-arg :: (Ord a, Show a) => String -> Scheme a -> a -> [String]
-arg str (Fix a) _ = [str, show a]
-arg str (Min a) b = [str, show $ max a b]
-arg str (Max a) b = [str, show $ min a b]
-arg _ Keep _ = []
+get :: (Ord a, Show a) => Scheme a -> a -> a
+get (Fix a) _ = a
+get (Min a) b = max a b
+get (Max a) b = min a b
+
+
+keep :: (Eq a) => Scheme a -> Bool
+keep = (Keep /=)
+
+unless :: Bool -> [a] -> [a]
+unless b a = if b then a else []
 
 data H264 = H264 {
         frameRate :: Scheme Int
@@ -27,6 +34,10 @@ data H264 = H264 {
       , prefix    :: String
       , suffix    :: String
       , frames    :: Scheme Int
+      , bitRate   :: Scheme Int
+      , audioBitRate :: Scheme Int
+      , height    :: Scheme Int
+      , width     :: Scheme Int
    } deriving (Generic, Eq, Show)
 
 
@@ -37,13 +48,25 @@ instance Config H264 where
          , prefix = "h264_"
          , suffix = ".mp4"
          , frames = Keep
+         , bitRate      = Keep
+         , audioBitRate = Keep
+         , height = Keep
+         , width  = Keep
       }
    makeArgs conf probe = []
-      ++ arg "-r:v" (frameRate conf) (P.frameRate probe)
+      ++ unless (keep $ frameRate conf) 
+            ["-r:v", show $ get (frameRate conf) (P.frameRate probe)]
       ++ ["-i", input]
       ++ ["-codec:v", "libx264"]
       ++ ["-crf", show $ crf conf]
-      ++ arg "-frames:v" (frames conf) (P.frames probe)
+      ++ unless (keep $ bitRate conf) 
+            ["-b:v", show $ get (bitRate conf) (P.bitRate probe)]
+      ++ unless (keep $ frames conf) 
+            ["-frames:v", show $ get (frames conf) (P.frames probe)]
+      ++ unless (keep (width conf) && keep (height conf)) 
+            ["-s:v", printf "%dx%d" 
+                        (get (width conf) (P.width probe)) 
+                        (get (height conf) (P.height probe))]
       ++ [output]
       where
          input = P.fpath probe

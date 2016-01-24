@@ -17,11 +17,19 @@ test = hspec $ do
          let arg = (defaultCfg :: H264) {frames = Fix 100} 
          let input = "test/test.in"
          ffmpeg arg =<< (ffprobe input)
-   describe "Normal test/test.in" $ do
       it "frameRate = 10" $ do
          let arg = (defaultCfg :: H264) {frameRate = Max 10} 
          let input = "test/test.in"
          ffmpeg arg =<< (ffprobe input)
+      it "bitRate = 10" $ do
+         let arg = (defaultCfg :: H264) {frameRate = Max 100, bitRate = Max 10} 
+         let input = "test/test.in"
+         ffmpeg arg =<< (ffprobe input)
+      it "size = 10x10" $ do
+         let arg = (defaultCfg :: H264) {frameRate = Max 100, height = Max 10, width = Max 10} 
+         let input = "test/test.in"
+         ffmpeg arg =<< (ffprobe input)
+         
    describe "Orphan test" $ do
       it "Kill immediately" $ do
          let arg = (defaultCfg :: H264) {frames = Fix 100} 
