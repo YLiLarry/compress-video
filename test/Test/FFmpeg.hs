@@ -22,11 +22,11 @@ test = hspec $ do
          let input = "test/test.in"
          ffmpeg arg =<< (ffprobe input)
       it "bitRate = 10" $ do
-         let arg = (defaultCfg :: H264) {frameRate = Max 100, bitRate = Max 10} 
+         let arg = (defaultCfg :: H264) {frameRate = Max 100, bitRate = Max 1} 
          let input = "test/test.in"
          ffmpeg arg =<< (ffprobe input)
       it "audioBitRate = 10" $ do
-         let arg = (defaultCfg :: H264) {frameRate = Max 100, audioBitRate = Max 10} 
+         let arg = (defaultCfg :: H264) {frameRate = Max 100, audioBitRate = Max 1} 
          let input = "test/test.in"
          ffmpeg arg =<< (ffprobe input)
       it "size = 10x10" $ do

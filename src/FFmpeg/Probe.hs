@@ -43,12 +43,12 @@ instance FromJSON Probe where
          fpath        = fpath',
          size         = read size',
          codec        = codec',
-         bitRate      = read bitRate',
+         bitRate      = read bitRate' `div` 1000,
          frames       = read frames',
          frameRate    = readFrameRate frameRate',
          height       = height',
          width        = width',
-         audioBitRate = read audioBitRate'
+         audioBitRate = read audioBitRate' `div` 1000
       }      
       where
          readFrameRate :: String -> Int
