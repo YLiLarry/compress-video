@@ -28,6 +28,9 @@ keep = (Keep ==)
 unless :: Bool -> [a] -> [a]
 unless b a = if b then [] else a
 
+when :: Bool -> [a] -> [a]
+when b a = if b then a else []
+
 data H264 = H264 {
         frameRate :: Scheme Int
       , crf       :: Int
@@ -43,13 +46,13 @@ data H264 = H264 {
 
 instance Config H264 where
    defaultCfg = H264 {
-           frameRate = Min 25
+           frameRate = Max 25
          , crf    = 18
          , prefix = "h264_"
          , suffix = ".mp4"
          , frames = Keep
          , bitRate      = Keep
-         , audioBitRate = Max $ 128 * 1000
+         , audioBitRate = Max 128
          , height = Keep
          , width  = Keep
       }
@@ -59,11 +62,11 @@ instance Config H264 where
       ++ ["-i", input]
       ++ ["-codec:v", "libx264"]
       ++ ["-strict", "-2", "-codec:a", "aac"]
-      ++ ["-crf", show $ crf conf]
+      ++ when (keep $ bitRate conf) ["-crf", show $ crf conf]
       ++ unless (keep $ bitRate conf) 
-            ["-b:v", show $ get (bitRate conf) (P.bitRate probe)]
+            ["-b:v", printf "%dk" $ get (bitRate conf) (P.bitRate probe)]
       ++ unless (keep $ audioBitRate conf) 
-            ["-b:a", show $ get (audioBitRate conf) (P.audioBitRate probe)]
+            ["-b:a", printf "%dk" $ get (audioBitRate conf) (P.audioBitRate probe)]
       ++ unless (keep $ frames conf) 
             ["-frames:v", show $ get (frames conf) (P.frames probe)]
       ++ unless (keep (width conf) && keep (height conf)) 
