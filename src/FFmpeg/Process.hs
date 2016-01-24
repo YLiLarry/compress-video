@@ -53,7 +53,7 @@ ffmpeg conf probe = do
    proc <- spawnFFmpeg conf probe
    printFFmpeg proc `catch` onExceptionKill proc
    Just code <- getFFmpegExitCode proc
-   when (code /= ExitSuccess) $ error $ "ffmpeg returns" ++ show code
+   when (code /= ExitSuccess) $ error $ "ffmpeg returns " ++ show code
 
 
 spawnFFmpeg :: Config a => a -> Probe -> IO FFmpegProcess
