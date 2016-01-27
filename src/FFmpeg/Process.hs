@@ -71,7 +71,7 @@ spawnFFmpeg config probe = do
    -- run process
    (_, _, Just errp, proc) <- createProcess p
    
-   errp `hSetEncoding` utf8
+   errp `hSetBinaryMode` True
    
    return FFmpegProcess {
         errHandle  = errp

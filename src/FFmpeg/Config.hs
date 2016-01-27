@@ -12,6 +12,7 @@ class Config a where
    fullArgs a probe =
       ["-y"]
       ++ ["-nostdin"]
+      -- ++ ["-no_banner"]
       ++ makeArgs a probe
 
 data LoadedCfg = forall a. (Config a) => LoadedCfg a
