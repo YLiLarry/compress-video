@@ -10,9 +10,11 @@ import Control.Monad (void)
 import System.FilePath
 import Data.Maybe
 import System.IO
+import System.Power
 
 main :: IO ()
 main = do
+   suggestPower RequireSystem
    hSetBuffering stdout NoBuffering
    [inPath, outPath, confPath] <- getArgs
    conf <- loadCfg confPath
