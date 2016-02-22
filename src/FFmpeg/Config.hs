@@ -10,7 +10,7 @@ class Config a where
 
    fullArgs :: a -> Probe -> [String]
    fullArgs a probe =
-      ["-y"]
+      ["-n"]
       ++ ["-nostdin"]
       -- ++ ["-no_banner"]
       ++ makeArgs a probe

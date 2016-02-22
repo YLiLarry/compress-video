@@ -14,15 +14,17 @@ import Data.Maybe
 import Control.Concurrent
 import Data.List.Split
 import Text.Printf
+import Data.List
 
 data FFmpegProcess = FFmpegProcess {
      errHandle  :: Handle
    , procHandle :: ProcessHandle
+   , cmd        :: [String]
 }
 
 
-ffmpegPath :: FilePath
-ffmpegPath = "ffmpeg"
+ffmpegBin :: FilePath
+ffmpegBin = "ffmpeg"
 
 
 waitForFFmpeg :: ProcessHandle -> IO ExitCode
@@ -34,6 +36,9 @@ killFFmpeg ffp = do
    let h = procHandle ffp
    interruptProcessGroupOf h
    void $ waitForProcess h
+   -- remove file
+   let out = last $ cmd ffp
+   whenM (doesFileExist out) (removeFile out)
 
 
 ffmpegIsRunning :: FFmpegProcess -> IO Bool
@@ -59,7 +64,9 @@ ffmpeg conf probe = do
 spawnFFmpeg :: Config a => a -> Probe -> IO FFmpegProcess
 spawnFFmpeg config probe = do
    -- make arg
-   let p = (proc ffmpegPath $ fullArgs config probe) {
+   let args = fullArgs config probe
+   p' <- proc ffmpegBin <$> overwrite False args
+   let p = p' {
         std_out = NoStream
       , std_err = CreatePipe
       , std_in  = NoStream
@@ -76,13 +83,14 @@ spawnFFmpeg config probe = do
    return FFmpegProcess {
         errHandle  = errp
       , procHandle = proc
+      , cmd = ffmpegBin : args
    }
 
 
 printCmd :: CmdSpec -> IO ()
 printCmd (ShellCommand str) = putStrLn $ "cmd: " ++ str
-printCmd (RawCommand file args) = putStrLn $ unwords $ ["cmd:", file] ++ args
-
+printCmd (RawCommand file args) = 
+   putStrLn $ unwords $ ["cmd:", file] ++ args
 
 printPWD :: IO ()
 printPWD = do
@@ -148,3 +156,13 @@ onExceptionKill proc e = do
 
 second :: Float -> Int
 second a = floor $ a * 1000000
+
+
+overwrite :: Bool -> [String] -> IO [String]
+overwrite True args = return args
+overwrite False args = do
+   bool <- doesFileExist out
+   when bool $ error $ printf "File \"%s\" exists." out
+   return args
+   where out = last args
+ 
