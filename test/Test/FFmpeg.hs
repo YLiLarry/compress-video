@@ -9,9 +9,12 @@ import FFmpeg.Process
 import FFmpeg.Data.H264 
 import Data.Maybe
 import Control.Exception
+import System.Directory
+import Text.Printf
 
 test :: IO ()
-test = hspec $ do
+test = hspec $ after_ cleanUp $ do
+      
    describe "Normal test/test.in" $ do
       it "frames = Fix 100" $ do
          let arg = (defaultCfg :: H264) {frames = Fix 100} 
@@ -57,3 +60,12 @@ test = hspec $ do
          probe <- ffprobe "test/test.in"
          print probe
          
+
+cleanUp = do
+   removeFile f `catch` handle
+   where
+      f = "test/h264_test.mp4"
+      handle :: IOException -> IO ()
+      handle = putStrLn . displayException
+      
+   
