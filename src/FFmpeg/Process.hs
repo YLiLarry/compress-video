@@ -103,7 +103,7 @@ printFFmpeg proc = do
    let h = errHandle proc
    total <- parseTime <$> grepDuration h
    while (\_-> ffmpegIsRunning proc <&&> notM (hIsEOF h)) $ do
-      threadDelay $ second 0.0001
+      -- threadDelay $ second 0.0001
       currentStr <- matchRegex (mkRegex "time=(.{8})") <$> hGetLine' (errHandle proc)
       when (isJust currentStr) $ do
          let current = parseTime $ head $ fromJust currentStr
