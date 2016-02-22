@@ -107,8 +107,8 @@ printFFmpeg proc = do
       currentStr <- matchRegex (mkRegex "time=(.{8})") <$> hGetLine' (errHandle proc)
       when (isJust currentStr) $ do
          let current = parseTime $ head $ fromJust currentStr
-         let percent = 100 * current `div` total
-         putStrLn $ printf "total=%d current=%d percent=%d" total current percent
+         let percent = fromIntegral (100 * current) / fromIntegral total :: Float
+         putStrLn $ printf "total=%d current=%d percent=%.2f" total current percent
 
 
 while :: (() -> IO Bool) -> IO () -> IO ()
