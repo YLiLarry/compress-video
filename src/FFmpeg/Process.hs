@@ -15,6 +15,7 @@ import Control.Concurrent
 import Data.List.Split
 import Text.Printf
 import Data.List
+import System.Power
 
 data FFmpegProcess = FFmpegProcess {
      errHandle  :: Handle
@@ -55,8 +56,11 @@ getFFmpegExitCode = getProcessExitCode . procHandle
 
 ffmpeg :: Config a => a -> Probe -> IO ()
 ffmpeg conf probe = do
+   suggestPower RequireSystem
    proc <- spawnFFmpeg conf probe
-   printFFmpeg proc `catch` onExceptionKill proc
+   printFFmpeg proc 
+      `catch` onExceptionKill proc 
+      `finally` suggestPower Default
    Just code <- getFFmpegExitCode proc
    when (code /= ExitSuccess) $ error $ "ffmpeg returns " ++ show code
 
@@ -102,21 +106,15 @@ printFFmpeg :: FFmpegProcess -> IO ()
 printFFmpeg proc = do
    let h = errHandle proc
    total <- parseTime <$> grepDuration h
-   while (\_-> ffmpegIsRunning proc <&&> notM (hIsEOF h)) $ do
-      -- threadDelay $ second 0.0001
-      currentStr <- matchRegex (mkRegex "time=(.{8})") <$> hGetLine' (errHandle proc)
-      when (isJust currentStr) $ do
-         let current = parseTime $ head $ fromJust currentStr
-         let percent = fromIntegral (100 * current) / fromIntegral total :: Float
-         putStrLn $ printf "total=%d current=%d percent=%.2f" total current percent
-
-
-while :: (() -> IO Bool) -> IO () -> IO ()
-while predM doM =
-   whenM (predM ()) $ do
-      doM
-      while predM doM
-
+   let printProgress = do
+         currentStr <- matchRegex regex <$> hGetLine' (errHandle proc)
+         when (isJust currentStr) $ do
+            let current = parseTime $ head $ fromJust currentStr
+            let percent = fromIntegral (100 * current) / fromIntegral total :: Float
+            putStrLn $ printf "total=%d current=%d percent=%.2f" total current percent
+         whenM (ffmpegIsRunning proc <&&> notM (hIsEOF h)) printProgress
+   printProgress
+   where regex = mkRegex "time=(.{8})"
 
 hGetLine' :: Handle -> IO String
 hGetLine' h = do
@@ -131,20 +129,11 @@ parseTime str = read hh * 3600 + read mm * 60 + read ss
 
 
 grepDuration :: Handle -> IO String
-grepDuration h = fromJust <$> untilM isJust matchDuration Nothing
-   where
-      matchDuration _ = do
-         inStr <- hGetLine h
-         let r = flip matchRegex inStr $ mkRegex "Duration: (.{8})"
-         return $ head <$> r
-
-
-untilM :: (Monad m) => (a -> Bool) -> (a -> m a) -> a -> m a
-untilM pred f acc
-   | pred acc = return acc
-   | otherwise = do
-      x <- f acc
-      untilM pred f x
+grepDuration h = do
+   inStr <- hGetLine h
+   let r = matchRegex regex inStr
+   if isJust r then return $ head $ fromJust r else grepDuration h
+   where regex = mkRegex "Duration: (.{8})"
 
 
 onExceptionKill :: FFmpegProcess -> SomeException -> IO ()
@@ -152,11 +141,6 @@ onExceptionKill proc e = do
    putStrLn "[Killed on Exception]"
    killFFmpeg proc
    throw e
-
-
-second :: Float -> Int
-second a = floor $ a * 1000000
-
 
 overwrite :: Bool -> [String] -> IO [String]
 overwrite True args = return args
