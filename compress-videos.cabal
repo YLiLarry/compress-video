@@ -32,6 +32,7 @@ library
                      , unordered-containers
                      , vector
                      , bytestring
+                     , system-power
   default-language:    Haskell2010
 
 executable compress
@@ -42,7 +43,6 @@ executable compress
                      , compress-videos
                      , filepath
                      , data-to-json-file
-                     , system-power
   default-language:    Haskell2010
 
 test-suite compress-videos-test
