@@ -11,7 +11,7 @@ test = hspec $
    describe "save/load" $ do
       let c = defaultCfg :: H264
       specify "save" $
-         save "test/tmp/测试.h264" c
+         save c "test/tmp/测试.h264"
       specify "load" $ do
          obj <- load "test/tmp/测试.h264"
          obj `shouldBe` c
