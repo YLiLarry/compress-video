@@ -1,6 +1,6 @@
-[submodule "lib/system-power"]
-	path = lib/system-power
-	url = https://github.com/YLiLarry/system-power.git
-[submodule "lib/data-to-json-file"]
-	path = lib/data-to-json-file
+[submodule "submodule/data-to-json-file"]
+	path = submodule/data-to-json-file
 	url = https://github.com/YLiLarry/data-to-json-file.git
+[submodule "submodule/system-power"]
+	path = submodule/system-power
+	url = https://github.com/YLiLarry/system-power.git
