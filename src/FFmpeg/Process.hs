@@ -7,9 +7,8 @@ import System.IO
 import System.Exit
 import System.Directory
 import Control.Exception
-import Control.Monad
+import Control.Monad.Extra
 import Text.Regex
-import Control.Conditional hiding (when)
 import Data.Maybe
 import Control.Concurrent
 import Data.List.Split
@@ -71,9 +70,9 @@ spawnFFmpeg config probe = do
    let args = fullArgs config probe
    p' <- proc ffmpegBin <$> overwrite False args
    let p = p' {
-        std_out = NoStream
+        std_out = Inherit
       , std_err = CreatePipe
-      , std_in  = NoStream
+      , std_in  = Inherit
       , create_group = True
    }
    -- print debug info
@@ -112,7 +111,7 @@ printFFmpeg proc = do
             let current = parseTime $ head $ fromJust currentStr
             let percent = fromIntegral (100 * current) / fromIntegral total :: Float
             putStrLn $ printf "total=%d current=%d percent=%.2f" total current percent
-         whenM (ffmpegIsRunning proc <&&> notM (hIsEOF h)) printProgress
+         whenM (ffmpegIsRunning proc &&^ notM (hIsEOF h)) printProgress
    printProgress
    where regex = mkRegex "time=(.{8})"
 
