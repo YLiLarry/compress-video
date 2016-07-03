@@ -1,12 +1,71 @@
 module Test.FFmpeg where
 
-import Test.Hspec (hspec, specify, describe)
+import Test.Hspec
 
-import FFmpeg
-import Cmd
+import System.Process
+import FFmpeg.Config 
+import FFmpeg.Probe (ffprobe)
+import FFmpeg.Process
+import FFmpeg.Data.H264 
+import Data.Maybe
+import Control.Exception
+import System.Directory
+import Text.Printf
 
 test :: IO ()
-test = hspec $ do
-   specify "test/test.in" $ do
-      ffmpeg defaultCmdArgs (config "test/test.in" "test/test.mp4" :: H264) >>= print
+test = hspec $ after_ cleanUp $ do
+      
+   describe "Normal test/test.in" $ do
+      it "frames = Fix 100" $ do
+         let arg = (defaultCfg :: H264) {frames = Fix 100} 
+         let input = "test/test.in"
+         ffmpeg arg =<< (ffprobe input)
+      it "frameRate = 10" $ do
+         let arg = (defaultCfg :: H264) {frameRate = Max 10} 
+         let input = "test/test.in"
+         ffmpeg arg =<< (ffprobe input)
+      it "bitRate = 10" $ do
+         let arg = (defaultCfg :: H264) {frameRate = Max 100, bitRate = Max 1} 
+         let input = "test/test.in"
+         ffmpeg arg =<< (ffprobe input)
+      it "audioBitRate = 10" $ do
+         let arg = (defaultCfg :: H264) {frameRate = Max 100, audioBitRate = Max 1} 
+         let input = "test/test.in"
+         ffmpeg arg =<< (ffprobe input)
+      it "size = 10x10" $ do
+         let arg = (defaultCfg :: H264) {frameRate = Max 100, height = Max 10, width = Max 10} 
+         let input = "test/test.in"
+         ffmpeg arg =<< (ffprobe input)
+         
+   describe "Orphan test" $ do
+      it "Kill immediately" $ do
+         let arg = (defaultCfg :: H264) {frames = Fix 100} 
+         let input = "test/test.in"
+         h <- spawnFFmpeg arg =<< (ffprobe input)
+         killFFmpeg h
+         code <- getFFmpegExitCode h
+         code `shouldSatisfy` isJust 
+      it "On Exception Kill" $ do
+         let arg = (defaultCfg :: H264) {frames = Fix 100} 
+         let input = "test/test.in"
+         h <- spawnFFmpeg arg =<< (ffprobe input)
+         (`shouldThrow` anyException) $ onExceptionKill h `handle` do
+            printFFmpeg h
+            throw UserInterrupt
+         code <- getFFmpegExitCode h 
+         code `shouldSatisfy` isJust  
+                
+   describe "FFProbe" $ do
+      it "Read a video" $ do
+         probe <- ffprobe "test/test.in"
+         print probe
+         
 
+cleanUp = do
+   removeFile f `catch` handle
+   where
+      f = "test/h264_test.mp4"
+      handle :: IOException -> IO ()
+      handle = putStrLn . displayException
+      
+   

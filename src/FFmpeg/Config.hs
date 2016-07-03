@@ -1,14 +1,24 @@
-module FFmpeg.Config where
+{-# LANGUAGE ExistentialQuantification #-}
 
-import Cmd
--- import Data.Maybe
+module FFmpeg.Config where
+   
+import FFmpeg.Probe
 
 class Config a where
-   makeArgs :: a -> [String]
-   config :: FilePath -> FilePath -> a
+   makeArgs :: a -> Probe -> [String]
+   defaultCfg :: a
 
-   fullArgs :: CmdArgs -> a -> [String]
-   fullArgs _ a =
-      ["-y"]
+   fullArgs :: a -> Probe -> [String]
+   fullArgs a probe =
+      ["-n"]
       ++ ["-nostdin"]
-      ++ makeArgs a
+      -- ++ ["-no_banner"]
+      ++ makeArgs a probe
+
+data LoadedCfg = forall a. (Config a) => LoadedCfg a
+
+instance Config LoadedCfg where
+   defaultCfg = undefined
+   makeArgs (LoadedCfg a) probe = makeArgs a probe
+   
+   

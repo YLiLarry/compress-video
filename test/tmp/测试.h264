@@ -1,1 +1,1 @@
-{"h264RV":"25","h264In":"测试/test.in","h264Out":"test/test.mp4","h264CRF":"18"}
+{"crf":18,"frameRate":{"tag":"Max","contents":25},"height":{"tag":"Keep","contents":[]},"suffix":".mp4","prefix":"h264_","width":{"tag":"Keep","contents":[]},"frames":{"tag":"Keep","contents":[]},"bitRate":{"tag":"Keep","contents":[]},"audioBitRate":{"tag":"Max","contents":128}}

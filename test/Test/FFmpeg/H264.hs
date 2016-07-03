@@ -2,15 +2,16 @@ module Test.FFmpeg.H264 where
 
 import Test.Hspec (hspec, specify, describe, shouldBe)
 
-import Lib
-
+import FFmpeg.Config as X
+import Data.SL
+import FFmpeg.Data.H264 as X
 
 test :: IO ()
-test = hspec $ do
+test = hspec $
    describe "save/load" $ do
-      let c = config "测试/test.in" "test/test.mp4" :: H264
+      let c = defaultCfg :: H264
       specify "save" $
-         save "test/tmp/测试.h264" c
+         save c "test/tmp/测试.h264"
       specify "load" $ do
          obj <- load "test/tmp/测试.h264"
          obj `shouldBe` c

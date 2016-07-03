@@ -2,8 +2,10 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-- ../data-to-json-file
+- lib/data-to-json-file
+- lib/system-power
 extra-deps:
 - cond-0.4.1.1
+- filepath-1.4.0.0
 - process-1.4.1.0
-resolver: lts-3.16
+resolver: nightly-2016-01-19
