@@ -7,20 +7,23 @@ import           FFmpeg.Config
 import           FFmpeg.Probe
 import           System.Directory
 import           System.Exit
-import           System.IO as IO
+import           System.IO                 as IO
 -- import           System.Power
+import           Control.Monad.Trans.Class as MT
+import           Control.Monad.Trans.State as MT
+import           Data.Foldable             as F
+import           Data.Maybe
+import           Data.Monoid
 import           System.Process
 import           Text.Printf
 import           Text.Regex
-import Data.Foldable as F
-import Data.Monoid
 
 data FFmpegProcess = FFmpegProcess {
     --  errHandle          :: Handle
      procHandle         :: ProcessHandle
    , cmd                :: String
    , probe              :: Probe
-   , progressFileHandle :: Handle
+   , progressFileHandle :: Maybe Handle
    , progressFilePath   :: FilePath
    , outPath            :: FilePath
    , percentage         :: Float
@@ -67,17 +70,19 @@ getFFmpegExitCode = getProcessExitCode . procHandle
 
 spawnFFmpeg :: Config a => a -> Probe -> FilePath -> IO FFmpegProcess
 spawnFFmpeg config pro outpath = do
+    let tmpf = fpath pro ++ ".tmp"
     -- make arg
     args <- fullArgs config pro outpath
-    exists <- doesFileExist outpath
-    when (exists && False) (removeFile outpath)
-    when (exists && not True) (errorYellow $ "File " ++ outpath ++ " exists.")
+    oexists <- doesFileExist outpath
+    texists <- doesFileExist tmpf
+    when texists (removeFile tmpf)
+    when (oexists && True) (removeFile outpath)
+    when (oexists && not True) (errorYellow $ "File " ++ outpath ++ " exists.")
 
     let p = (shell args) {
-          std_out = CreatePipe
-        , std_err = CreatePipe
-        , std_in  = Inherit
-        , create_group = True
+          std_out = NoStream
+        , std_err = Inherit
+        , std_in  = CreatePipe
     }
     -- print debug info
     errorYellow args
@@ -85,17 +90,13 @@ spawnFFmpeg config pro outpath = do
     -- run process
     (_, _, _, pr) <- createProcess p
 
-    -- errp `hSetBinaryMode` True
-
-    let tmpf = fpath pro ++ ".tmp"
-    tmphdl <- openFile tmpf ReadWriteMode
 
     return FFmpegProcess {
         --   errHandle  = errp
           procHandle = pr
         , cmd = args
         , probe = pro
-        , progressFileHandle = tmphdl
+        , progressFileHandle = Nothing
         , progressFilePath = tmpf
         , outPath = outpath
         , percentage = 0
@@ -106,23 +107,36 @@ printPWD = do
    pwd <- getCurrentDirectory
    errorYellow $ "pwd: " ++ pwd
 
-printFFmpegProgress :: FFmpegProcess -> IO ()
-printFFmpegProgress pc = do
-    triple <- getCurrentPercentage pc
-    case triple of
-        Nothing -> return ()
-        Just (total, current, percent) ->
-            when (percent > percentage pc)
-                (putStrLn $ printf "{\"total\":%.2f, \"current\":%.2f, \"percentage\":%.4f}" total current percent)
+printFFmpegProgress :: StateT FFmpegProcess IO ()
+printFFmpegProgress = do
+    pc <- MT.get
+    let fp = progressFilePath pc
+    exists <- MT.lift $ doesFileExist fp
+    when exists $ do
+        triple <- getCurrentPercentage
+        case triple of
+            Nothing -> return ()
+            Just (total, current, percent) ->
+                when (percent > percentage pc)
+                    (MT.lift $ putStrLn $ printf "{\"total\":%.2f, \"current\":%.2f, \"percentage\":%.4f}" total current percent)
 
-getCurrentPercentage :: FFmpegProcess -> IO (Maybe (Float, Float, Float))
-getCurrentPercentage pc = do
-    ls <- hGetLinesReverse (progressFileHandle pc)
-    -- print ls
+getCurrentPercentage :: StateT FFmpegProcess IO (Maybe (Float, Float, Float))
+getCurrentPercentage = do
+    oldpc <- MT.get
+    let fp = progressFilePath oldpc
+    let hd = progressFileHandle oldpc
+    when (isNothing hd) $ do
+        hd' <- MT.lift $ openFile fp ReadMode
+        MT.put oldpc {
+            progressFileHandle = Just hd'
+        }
+    newpc <- MT.get
+    ls <- MT.lift $ hGetLinesReverse (fromJust $ progressFileHandle newpc)
     return $ do
+    -- print ls
         current' <- getFirst $ F.foldMap First $ map isDuration ls
         let current = current' / 1000000 :: Float
-        let total = duration $ probe pc :: Float
+        let total = duration $ probe newpc :: Float
         let percent = (fromInteger $ floor ((current / total) * 10000)) / 10000 :: Float
         return (total, current, percent)
 

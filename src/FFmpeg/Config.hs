@@ -2,10 +2,10 @@
 
 module FFmpeg.Config where
 
-import           Control.Monad
-import           Debug
+-- import           Control.Monad
+-- import           Debug
 import           FFmpeg.Probe
-import           System.Directory
+-- import           System.Directory
 import           System.Environment
 
 class Config a where

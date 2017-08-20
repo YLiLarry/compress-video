@@ -4,7 +4,7 @@ import           Control.Concurrent
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.Trans.Class  as MT
-import           Control.Monad.Trans.Reader as MT
+import           Control.Monad.Trans.State as MT
 import           Data.SL
 import           Debug
 import           FFmpeg.Config
@@ -33,7 +33,7 @@ mainLoop = handle onAnyException $ do
                 conf <- loadCfg confPath
                 info <- ffprobe inPath
                 hl <- spawnFFmpeg conf info opath
-                runReaderT loop hl
+                evalStateT loop hl
         _ -> do
             errorYellow "[input path] [output path] [config path]"
             exitFailure
@@ -42,10 +42,8 @@ mainLoop = handle onAnyException $ do
 
 onAnyException :: SomeException -> IO ()
 onAnyException e = do
-    errorRed $ displayException e
     threadDelay 1000000
     throw e
-
 
 loadCfg :: FilePath -> IO LoadedCfg
 loadCfg path =
@@ -54,13 +52,13 @@ loadCfg path =
         _       -> error $ "Undefined extension: " ++ show path
 
 
-loop :: ReaderT FFmpegProcess IO ()
+loop :: StateT FFmpegProcess IO ()
 loop = forever $ do
     checkCommand
     checkProgress
     MT.lift $ threadDelay (1000000 `div` 10)
 
-checkCommand :: ReaderT FFmpegProcess IO ()
+checkCommand :: StateT FFmpegProcess IO ()
 checkCommand = do
     ready <- MT.lift $ hReady stdin
     when ready $ do
@@ -69,18 +67,17 @@ checkCommand = do
             "quit" -> shutdown
             _ -> return ()
 
-checkProgress :: ReaderT FFmpegProcess IO ()
+checkProgress :: StateT FFmpegProcess IO ()
 checkProgress = do
-    rd <- ask
-    MT.lift $ do
-        code <- getProcessExitCode (procHandle rd)
-        case code of
-            Nothing -> printFFmpegProgress rd
-            Just k -> exitWith k
+    rd <- MT.get
+    code <- MT.lift $ getProcessExitCode (procHandle rd)
+    case code of
+        Nothing -> printFFmpegProgress
+        Just k -> MT.lift $ exitWith k
 
-shutdown :: ReaderT FFmpegProcess IO ()
+shutdown :: StateT FFmpegProcess IO ()
 shutdown = do
-    rd <- ask
+    rd <- MT.get
     MT.lift $ do
         errorYellow "Shutting down ffmpeg..."
         killFFmpeg rd
