@@ -32,7 +32,6 @@ data FFmpegProcess = FFmpegProcess {
 waitForFFmpeg :: ProcessHandle -> IO ExitCode
 waitForFFmpeg = waitForProcess
 
-
 killFFmpeg :: FFmpegProcess -> IO ()
 killFFmpeg ffp = do
    let h = procHandle ffp
@@ -44,7 +43,6 @@ killFFmpeg ffp = do
    whenM (doesFileExist out) (removeFile out)
    whenM (doesFileExist tmp) (removeFile tmp)
 
-
 ffmpegIsRunning :: FFmpegProcess -> IO Bool
 ffmpegIsRunning ffp = do
    maybeExitCode <- getFFmpegExitCode ffp
@@ -52,21 +50,8 @@ ffmpegIsRunning ffp = do
       Just _  -> False
       Nothing -> True
 
-
 getFFmpegExitCode :: FFmpegProcess -> IO (Maybe ExitCode)
 getFFmpegExitCode = getProcessExitCode . procHandle
-
-
--- ffmpeg :: Config a => a -> Probe -> IO ()
--- ffmpeg conf probe = do
---    suggestPower RequireSystem
---    pr <- spawnFFmpeg conf probe
---    printFFmpeg pr
---       `catch` onExceptionKill pr
---       `finally` suggestPower Default
---    Just code <- getFFmpegExitCode pr
---    when (code /= ExitSuccess) $ error $ "ffmpeg returns " ++ show code
-
 
 spawnFFmpeg :: Config a => a -> Probe -> FilePath -> IO FFmpegProcess
 spawnFFmpeg config pro outpath = do
@@ -83,14 +68,12 @@ spawnFFmpeg config pro outpath = do
           std_out = NoStream
         , std_err = Inherit
         , std_in  = CreatePipe
+        , create_group = True
     }
     -- print debug info
     errorYellow args
-    printPWD
     -- run process
     (_, _, _, pr) <- createProcess p
-
-
     return FFmpegProcess {
         --   errHandle  = errp
           procHandle = pr
@@ -101,11 +84,6 @@ spawnFFmpeg config pro outpath = do
         , outPath = outpath
         , percentage = 0
     }
-
-printPWD :: IO ()
-printPWD = do
-   pwd <- getCurrentDirectory
-   errorYellow $ "pwd: " ++ pwd
 
 printFFmpegProgress :: StateT FFmpegProcess IO ()
 printFFmpegProgress = do
@@ -155,9 +133,3 @@ hGetLinesReverse = hGetLinesReverse' []
                 if not ready then return sofar else do
                     l <- hGetLine hd
                     hGetLinesReverse' (l:sofar) hd
-
-onExceptionKill :: FFmpegProcess -> SomeException -> IO ()
-onExceptionKill pr e = do
-   putStrLn "[Killed on Exception]"
-   killFFmpeg pr
-   throw e

@@ -1,9 +1,10 @@
 module MainLoop where
 
 import           Control.Concurrent
-import           Control.Exception
+import           Control.Exception         as E
 import           Control.Monad
-import           Control.Monad.Trans.Class  as MT
+import           Control.Monad.Catch       as M
+import           Control.Monad.Trans.Class as MT
 import           Control.Monad.Trans.State as MT
 import           Data.SL
 import           Debug
@@ -16,10 +17,9 @@ import           System.Exit
 import           System.FilePath
 import           System.IO
 import           System.Process
--- import Control.Exception
 
 mainLoop :: IO ()
-mainLoop = handle onAnyException $ do
+mainLoop = do
     hSetBuffering stdout LineBuffering
     hSetBuffering stderr LineBuffering
     args <- getArgs
@@ -40,10 +40,18 @@ mainLoop = handle onAnyException $ do
 
     -- setIOFile conf inPath outPath
 
-onAnyException :: SomeException -> IO ()
+onAnyException :: SomeException -> StateT FFmpegProcess IO ()
 onAnyException e = do
-    threadDelay 1000000
-    throw e
+    let maybeExit = fromException e :: Maybe ExitCode
+    case maybeExit of
+        Just k -> MT.lift $ exitWith k
+        Nothing -> do
+            MT.lift $ errorRed $ show e
+            shutdown
+
+-- ignoreUserInterrupt :: E.SomeException -> IO ()
+-- ignoreUserInterrupt e = errorYellow "UserInterrupt ignored."
+-- ignoreUserInterrupt e             = throw e
 
 loadCfg :: FilePath -> IO LoadedCfg
 loadCfg path =
@@ -53,7 +61,7 @@ loadCfg path =
 
 
 loop :: StateT FFmpegProcess IO ()
-loop = forever $ do
+loop = forever $ M.handle onAnyException $ do
     checkCommand
     checkProgress
     MT.lift $ threadDelay (1000000 `div` 10)
@@ -65,7 +73,7 @@ checkCommand = do
         str <- MT.lift getLine
         case str of
             "quit" -> shutdown
-            _ -> return ()
+            _      -> return ()
 
 checkProgress :: StateT FFmpegProcess IO ()
 checkProgress = do
@@ -73,7 +81,7 @@ checkProgress = do
     code <- MT.lift $ getProcessExitCode (procHandle rd)
     case code of
         Nothing -> printFFmpegProgress
-        Just k -> MT.lift $ exitWith k
+        Just k  -> MT.lift $ exitWith k
 
 shutdown :: StateT FFmpegProcess IO ()
 shutdown = do
@@ -81,4 +89,5 @@ shutdown = do
     MT.lift $ do
         errorYellow "Shutting down ffmpeg..."
         killFFmpeg rd
+        errorYellow "Gracefully shut down."
         exitFailure

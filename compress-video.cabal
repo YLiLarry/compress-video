@@ -36,6 +36,7 @@ library
                      , transformers
                      , extra
                      , ansi-terminal
+                     , exceptions
   default-language:    Haskell2010
 
 executable compress-video
