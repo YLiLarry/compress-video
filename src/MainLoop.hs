@@ -15,6 +15,7 @@ import           FFmpeg.Process
 import           System.Environment
 import           System.Exit
 import           System.FilePath
+import           System.Directory
 import           System.IO
 import           System.Process
 
@@ -24,21 +25,25 @@ mainLoop = do
     hSetBuffering stderr LineBuffering
     args <- getArgs
     case args of
-        [inPath, opath, confPath] -> do
-            if (inPath == opath) then do
-                errorYellow "The input path must be different from the output path."
-                errorYellow "[input path] [output path] [config path]"
+        [infile, outdir, cfgfile] -> do
+            isFile <- doesFileExist infile
+            isDir <- doesDirectoryExist outdir
+            if not isFile then do
+                errorRed $ "File " ++ infile ++ " does not exist."
+                exitFailure
+            else if not isDir then do
+                errorRed $ "Directory " ++ outdir ++ " does not exist."
                 exitFailure
             else do
-                conf <- loadCfg confPath
-                info <- ffprobe inPath
-                hl <- spawnFFmpeg conf info opath
+                conf <- loadCfg cfgfile
+                info <- ffprobe infile
+                hl <- spawnFFmpeg conf info outdir
                 evalStateT loop hl
         _ -> do
-            errorYellow "[input path] [output path] [config path]"
+            errorYellow "[input file] [output directory] [config file]"
             exitFailure
 
-    -- setIOFile conf inPath outPath
+    -- setIOFile conf infile outPath
 
 onAnyException :: SomeException -> StateT FFmpegProcess IO ()
 onAnyException e = do
@@ -81,7 +86,12 @@ checkProgress = do
     code <- MT.lift $ getProcessExitCode (procHandle rd)
     case code of
         Nothing -> printFFmpegProgress
-        Just k  -> MT.lift $ exitWith k
+        Just k  -> MT.lift $ do
+            errorYellow $ "Ffmpeg exited with code " ++ show k
+            let tmpfp = progressFilePath rd
+            exists <- doesFileExist tmpfp
+            when exists (removeFile tmpfp)
+            exitWith k
 
 shutdown :: StateT FFmpegProcess IO ()
 shutdown = do

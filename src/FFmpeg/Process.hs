@@ -54,34 +54,38 @@ getFFmpegExitCode :: FFmpegProcess -> IO (Maybe ExitCode)
 getFFmpegExitCode = getProcessExitCode . procHandle
 
 spawnFFmpeg :: Config a => a -> Probe -> FilePath -> IO FFmpegProcess
-spawnFFmpeg config pro outpath = do
+spawnFFmpeg config pro outdir = do
     let tmpf = fpath pro ++ ".tmp"
     -- make arg
-    args <- fullArgs config pro outpath
-    oexists <- doesFileExist outpath
+    args <- fullArgs config pro outdir
+    let strargs = unwords args
+    let outfile = last args
+    oexists <- doesFileExist outfile
     texists <- doesFileExist tmpf
     when texists (removeFile tmpf)
-    when (oexists && True) (removeFile outpath)
-    when (oexists && not True) (errorYellow $ "File " ++ outpath ++ " exists.")
+    when (oexists && True) $ do
+        errorYellow $ "File " ++ outfile ++ " exists. Will overwrite."
+        removeFile outfile
+    when (oexists && not True) (errorYellow $ "File " ++ outfile ++ " exists.")
 
-    let p = (shell args) {
+    let p = (shell strargs) {
           std_out = NoStream
         , std_err = Inherit
         , std_in  = CreatePipe
         , create_group = True
     }
     -- print debug info
-    errorYellow args
+    errorYellow strargs
     -- run process
     (_, _, _, pr) <- createProcess p
     return FFmpegProcess {
         --   errHandle  = errp
           procHandle = pr
-        , cmd = args
+        , cmd = strargs
         , probe = pro
         , progressFileHandle = Nothing
         , progressFilePath = tmpf
-        , outPath = outpath
+        , outPath = outfile
         , percentage = 0
     }
 
