@@ -2,11 +2,10 @@
 
 module FFmpeg.Data.H264 where
 
-import FFmpeg.Config
-import qualified FFmpeg.Probe as P
-import Data.SL
-import System.FilePath
-import Text.Printf
+import           Data.SL
+import           FFmpeg.Config
+import qualified FFmpeg.Probe  as P
+import           Text.Printf
 
 data Scheme a = Fix a
               | Min a
@@ -25,60 +24,55 @@ get (Max a) b = min a b
 keep :: (Eq a) => Scheme a -> Bool
 keep = (Keep ==)
 
-unless :: Bool -> [a] -> [a]
-unless b a = if b then [] else a
+unlessL :: Bool -> [a] -> [a]
+unlessL b a = if b then [] else a
 
-when :: Bool -> [a] -> [a]
-when b a = if b then a else []
+whenL :: Bool -> [a] -> [a]
+whenL b a = if b then a else []
 
 data H264 = H264 {
-        frameRate :: Scheme Int
-      , crf       :: Int
-      , prefix    :: String
-      , suffix    :: String
-      , frames    :: Scheme Int
-      , bitRate   :: Scheme Int
-      , audioBitRate :: Scheme Int
-      , height    :: Scheme Int
-      , width     :: Scheme Int
-   } deriving (Generic, Eq, Show)
+    frameRate      :: Scheme Int
+    , crf          :: Int
+    , prefix       :: String
+    , suffix       :: String
+    , frames       :: Scheme Integer
+    , bitRate      :: Scheme Int
+    , audioBitRate :: Scheme Int
+    , height       :: Scheme Int
+    , width        :: Scheme Int
+} deriving (Generic, Eq, Show)
 
 
 instance Config H264 where
-   defaultCfg = H264 {
-           frameRate = Max 25
-         , crf    = 18
-         , prefix = "h264_"
-         , suffix = ".mp4"
-         , frames = Keep
-         , bitRate      = Keep
-         , audioBitRate = Max 128
-         , height = Keep
-         , width  = Keep
-      }
-   makeArgs conf probe = []
-      -- input
-      ++ ["-i", input]
-      -- output
-      ++ ["-codec:v", "libx264"]
-      ++ ["-strict", "-2", "-codec:a", "aac", "-async", "1000"]
-      ++ when (keep $ bitRate conf) ["-crf", show $ crf conf]
-      ++ unless (keep $ bitRate conf) 
+    defaultCfg = H264 {
+          frameRate    = Max 25
+        , crf          = 18
+        , prefix       = "h264_"
+        , suffix       = ".mp4"
+        , frames       = Keep
+        , bitRate      = Keep
+        , audioBitRate = Max 128
+        , height       = Keep
+        , width        = Keep
+    }
+    makeExt = suffix
+    makeArgs conf probe = []
+        -- output
+        ++ ["-codec:v", "libx264"]
+        ++ ["-strict", "-2", "-codec:a", "aac", "-async", "1000"]
+        ++ whenL (keep $ bitRate conf) ["-crf", show $ crf conf]
+        ++ unlessL (keep $ bitRate conf)
             ["-b:v", printf "%dk" $ get (bitRate conf) (P.bitRate probe)]
-      ++ unless (keep $ audioBitRate conf) 
+        ++ unlessL (keep $ audioBitRate conf)
             ["-b:a", printf "%dk" $ get (audioBitRate conf) (P.audioBitRate probe)]
-      ++ unless (keep $ frames conf) 
+        ++ unlessL (keep $ frames conf)
             ["-frames:v", show $ get (frames conf) (P.frames probe)]
-      ++ unless (keep (width conf) && keep (height conf)) 
-            ["-s:v", printf "%dx%d" 
-                        (get (width conf) (P.width probe)) 
+        ++ unlessL (keep (width conf) && keep (height conf))
+            ["-s:v", printf "%dx%d"
+                        (get (width conf) (P.width probe))
                         (get (height conf) (P.height probe))]
-      ++ unless (keep $ frameRate conf) 
+        ++ unlessL (keep $ frameRate conf)
             ["-r:v", show $ get (frameRate conf) (P.frameRate probe)]
-      ++ [output]
-      where
-         input = P.fpath probe
-         output = takeDirectory input ++ "/" ++ prefix conf ++ takeBaseName input ++ suffix conf
 
 instance SL H264
 instance ToJSON H264

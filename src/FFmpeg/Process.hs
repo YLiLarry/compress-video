@@ -1,45 +1,47 @@
 module FFmpeg.Process where
 
-import FFmpeg.Probe
-import FFmpeg.Config
-import System.Process
-import System.IO
-import System.Exit
-import System.Directory
-import Control.Exception
-import Control.Monad.Extra
-import Text.Regex
-import Data.Maybe
-import Control.Concurrent
-import Data.List.Split
-import Text.Printf
-import Data.List
-import System.Power
+import           Control.Exception
+import           Control.Monad.Extra
+import           Debug
+import           FFmpeg.Config
+import           FFmpeg.Probe
+import           System.Directory
+import           System.Exit
+import           System.IO                 as IO
+-- import           System.Power
+import           Control.Monad.Trans.Class as MT
+import           Control.Monad.Trans.State as MT
+import           Data.Foldable             as F
+import           Data.Maybe
+import           Data.Monoid
+import           System.Process
+import           Text.Printf
+import           Text.Regex
 
 data FFmpegProcess = FFmpegProcess {
-     errHandle  :: Handle
-   , procHandle :: ProcessHandle
-   , cmd        :: [String]
+    --  errHandle          :: Handle
+     procHandle         :: ProcessHandle
+   , cmd                :: String
+   , probe              :: Probe
+   , progressFileHandle :: Maybe Handle
+   , progressFilePath   :: FilePath
+   , outPath            :: FilePath
+   , percentage         :: Float
 }
-
-
-ffmpegBin :: FilePath
-ffmpegBin = "ffmpeg"
-
 
 waitForFFmpeg :: ProcessHandle -> IO ExitCode
 waitForFFmpeg = waitForProcess
 
-
 killFFmpeg :: FFmpegProcess -> IO ()
-killFFmpeg ffp = do 
+killFFmpeg ffp = do
    let h = procHandle ffp
    interruptProcessGroupOf h
    void $ waitForProcess h
    -- remove file
-   let out = last $ cmd ffp
+   let out = outPath ffp
+   let tmp = progressFilePath ffp
    whenM (doesFileExist out) (removeFile out)
-
+   whenM (doesFileExist tmp) (removeFile tmp)
 
 ffmpegIsRunning :: FFmpegProcess -> IO Bool
 ffmpegIsRunning ffp = do
@@ -48,104 +50,90 @@ ffmpegIsRunning ffp = do
       Just _  -> False
       Nothing -> True
 
-
 getFFmpegExitCode :: FFmpegProcess -> IO (Maybe ExitCode)
 getFFmpegExitCode = getProcessExitCode . procHandle
 
+spawnFFmpeg :: Config a => a -> Probe -> FilePath -> IO FFmpegProcess
+spawnFFmpeg config pro outdir = do
+    let tmpf = fpath pro ++ ".tmp"
+    -- make arg
+    args <- fullArgs config pro outdir
+    let strargs = unwords args
+    let outfile = last args
+    oexists <- doesFileExist outfile
+    texists <- doesFileExist tmpf
+    when texists (removeFile tmpf)
+    when (oexists && True) $ do
+        errorYellow $ "File " ++ outfile ++ " exists. Will overwrite."
+        removeFile outfile
+    when (oexists && not True) (errorYellow $ "File " ++ outfile ++ " exists.")
 
-ffmpeg :: Config a => a -> Probe -> IO ()
-ffmpeg conf probe = do
-   suggestPower RequireSystem
-   proc <- spawnFFmpeg conf probe
-   printFFmpeg proc 
-      `catch` onExceptionKill proc 
-      `finally` suggestPower Default
-   Just code <- getFFmpegExitCode proc
-   when (code /= ExitSuccess) $ error $ "ffmpeg returns " ++ show code
+    let p = (shell strargs) {
+          std_out = NoStream
+        , std_err = Inherit
+        , std_in  = CreatePipe
+        , create_group = True
+    }
+    -- print debug info
+    errorYellow strargs
+    -- run process
+    (_, _, _, pr) <- createProcess p
+    return FFmpegProcess {
+        --   errHandle  = errp
+          procHandle = pr
+        , cmd = strargs
+        , probe = pro
+        , progressFileHandle = Nothing
+        , progressFilePath = tmpf
+        , outPath = outfile
+        , percentage = 0
+    }
 
+printFFmpegProgress :: StateT FFmpegProcess IO ()
+printFFmpegProgress = do
+    pc <- MT.get
+    let fp = progressFilePath pc
+    exists <- MT.lift $ doesFileExist fp
+    when exists $ do
+        triple <- getCurrentPercentage
+        case triple of
+            Nothing -> return ()
+            Just (total, current, percent) ->
+                when (percent > percentage pc)
+                    (MT.lift $ putStrLn $ printf "{\"total\":%.2f, \"current\":%.2f, \"percentage\":%.4f}" total current percent)
 
-spawnFFmpeg :: Config a => a -> Probe -> IO FFmpegProcess
-spawnFFmpeg config probe = do
-   -- make arg
-   let args = fullArgs config probe
-   p' <- proc ffmpegBin <$> overwrite False args
-   let p = p' {
-        std_out = Inherit
-      , std_err = CreatePipe
-      , std_in  = Inherit
-      , create_group = True
-   }
-   -- print debug info
-   printCmd $ cmdspec p
-   printPWD
-   -- run process
-   (_, _, Just errp, proc) <- createProcess p
-   
-   errp `hSetBinaryMode` True
-   
-   return FFmpegProcess {
-        errHandle  = errp
-      , procHandle = proc
-      , cmd = ffmpegBin : args
-   }
+getCurrentPercentage :: StateT FFmpegProcess IO (Maybe (Float, Float, Float))
+getCurrentPercentage = do
+    oldpc <- MT.get
+    let fp = progressFilePath oldpc
+    let hd = progressFileHandle oldpc
+    when (isNothing hd) $ do
+        hd' <- MT.lift $ openFile fp ReadMode
+        MT.put oldpc {
+            progressFileHandle = Just hd'
+        }
+    newpc <- MT.get
+    ls <- MT.lift $ hGetLinesReverse (fromJust $ progressFileHandle newpc)
+    return $ do
+    -- print ls
+        current' <- getFirst $ F.foldMap First $ map isDuration ls
+        let current = current' / 1000000 :: Float
+        let total = duration $ probe newpc :: Float
+        let percent = (fromInteger $ floor ((current / total) * 10000)) / 10000 :: Float
+        return (total, current, percent)
 
+isDuration :: String -> Maybe Float
+isDuration str = do
+    matched <- matchRegex (mkRegex "out_time_ms=([0-9]+)") str
+    Just $ read $ head matched
 
-printCmd :: CmdSpec -> IO ()
-printCmd (ShellCommand str) = putStrLn $ "cmd: " ++ str
-printCmd (RawCommand file args) = 
-   putStrLn $ unwords $ ["cmd:", file] ++ args
-
-printPWD :: IO ()
-printPWD = do
-   pwd <- getCurrentDirectory
-   putStrLn $ "pwd: " ++ pwd
-
-
-printFFmpeg :: FFmpegProcess -> IO ()
-printFFmpeg proc = do
-   let h = errHandle proc
-   total <- parseTime <$> grepDuration h
-   let printProgress = do
-         currentStr <- matchRegex regex <$> hGetLine' (errHandle proc)
-         when (isJust currentStr) $ do
-            let current = parseTime $ head $ fromJust currentStr
-            let percent = fromIntegral (100 * current) / fromIntegral total :: Float
-            putStrLn $ printf "total=%d current=%d percent=%.2f" total current percent
-         whenM (ffmpegIsRunning proc &&^ notM (hIsEOF h)) printProgress
-   printProgress
-   where regex = mkRegex "time=(.{8})"
-
-hGetLine' :: Handle -> IO String
-hGetLine' h = do
-   c <- hGetChar h
-   if c `elem` "\n\r" then return ""
-   else (c:) <$> hGetLine' h
-
-
-parseTime :: String -> Int
-parseTime str = read hh * 3600 + read mm * 60 + read ss
-   where [hh,mm,ss] = splitOn ":" str
-
-
-grepDuration :: Handle -> IO String
-grepDuration h = do
-   inStr <- hGetLine h
-   let r = matchRegex regex inStr
-   if isJust r then return $ head $ fromJust r else grepDuration h
-   where regex = mkRegex "Duration: (.{8})"
-
-
-onExceptionKill :: FFmpegProcess -> SomeException -> IO ()
-onExceptionKill proc e = do
-   putStrLn "[Killed on Exception]"
-   killFFmpeg proc
-   throw e
-
-overwrite :: Bool -> [String] -> IO [String]
-overwrite True args = return args
-overwrite False args = do
-   bool <- doesFileExist out
-   when bool $ error $ printf "File \"%s\" exists." out
-   return args
-   where out = last args
- 
+hGetLinesReverse :: Handle -> IO [String]
+hGetLinesReverse = hGetLinesReverse' []
+    where
+        hGetLinesReverse' sofar hd = do
+            eof <- IO.hIsEOF hd
+            if eof then return sofar else do
+                ready <- IO.hReady hd
+                if not ready then return sofar else do
+                    l <- hGetLine hd
+                    hGetLinesReverse' (l:sofar) hd
