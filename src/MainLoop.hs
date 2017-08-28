@@ -12,10 +12,10 @@ import           FFmpeg.Config
 import           FFmpeg.Data.H264
 import           FFmpeg.Probe
 import           FFmpeg.Process
+import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.FilePath
-import           System.Directory
 import           System.IO
 import           System.Process
 
@@ -23,6 +23,9 @@ mainLoop :: IO ()
 mainLoop = do
     hSetBuffering stdout LineBuffering
     hSetBuffering stderr LineBuffering
+    hSetEncoding stdin utf8
+    hSetEncoding stdout utf8
+    hSetEncoding stderr utf8
     args <- getArgs
     case args of
         [infile, outdir, cfgfile] -> do
