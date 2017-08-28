@@ -63,10 +63,10 @@ spawnFFmpeg config pro outdir = do
     oexists <- doesFileExist outfile
     texists <- doesFileExist tmpf
     when texists (removeFile tmpf)
-    when (oexists && True) $ do
+    when (oexists && False) $ do
         errorYellow $ "File " ++ outfile ++ " exists. Will overwrite."
         removeFile outfile
-    when (oexists && not True) (errorYellow $ "File " ++ outfile ++ " exists.")
+    when (oexists && not False) (errorYellow $ "File " ++ outfile ++ " exists.")
 
     let p = (shell strargs) {
           std_out = NoStream

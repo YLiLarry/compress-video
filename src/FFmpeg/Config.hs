@@ -5,8 +5,8 @@ module FFmpeg.Config where
 -- import           Control.Monad
 -- import           Debug
 import           FFmpeg.Probe
-import           System.FilePath
 import           System.Environment
+import           System.FilePath
 
 class Config a where
     makeArgs :: a -> Probe -> [String]
@@ -18,14 +18,14 @@ class Config a where
         ffmpegBin <- getEnv "bin_ffmpeg"
         let infile = fpath probe
         return $ [ffmpegBin]
-            ++ ["-i", infile]
+            ++ ["-i", "\"" ++ infile ++ "\""]
             ++ ["-n"]
             ++ ["-nostdin"]
             ++ ["-v", "error"]
-            ++ ["-progress", fpath probe ++ ".tmp"]
+            ++ ["-progress", "\"" ++ fpath probe ++ ".tmp" ++ "\""]
             -- ++ ["-no_banner"]
             ++ makeArgs a probe
-            ++ [replaceExtension (replaceDirectory infile outdir) (makeExt a)]
+            ++ ["\"" ++ replaceExtension (replaceDirectory infile outdir) (makeExt a) ++ "\""]
 
 data LoadedCfg = forall a. (Config a) => LoadedCfg a
 

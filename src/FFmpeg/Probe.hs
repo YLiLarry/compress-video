@@ -8,8 +8,8 @@ import qualified Data.HashMap.Strict  as HM
 import           Data.List.Split
 import qualified Data.Vector          as V
 import           Debug
-import           System.Exit
 import           System.Environment
+import           System.Exit
 import           System.IO
 import           System.Process
 import           Text.Printf
@@ -75,13 +75,12 @@ ffprobe file = do
                 ++ ["-of", "json"]
                 ++ ["-show_format"]
                 ++ ["-show_streams"]
-                ++ [file]
+                ++ ["\"" ++ file ++ "\""]
     errorYellow args
     (_,Just out,Just err,h) <- createProcess $ (shell args) {
         std_out = CreatePipe,
         std_err = CreatePipe
     }
-    waitForProcess h
     s <- hGetContents err
     b <- B.hGetContents out
     case eitherDecode b of
