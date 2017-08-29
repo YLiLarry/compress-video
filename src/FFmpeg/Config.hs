@@ -15,17 +15,15 @@ class Config a where
 
     fullArgs :: a -> Probe -> FilePath -> IO [String]
     fullArgs a probe outdir = do
-        ffmpegBin <- getEnv "bin_ffmpeg"
         let infile = fpath probe
-        return $ [ffmpegBin]
-            ++ ["-i", "\"" ++ infile ++ "\""]
-            ++ ["-n"]
-            ++ ["-nostdin"]
-            ++ ["-v", "error"]
-            ++ ["-progress", "\"" ++ fpath probe ++ ".tmp" ++ "\""]
-            -- ++ ["-no_banner"]
-            ++ makeArgs a probe
-            ++ ["\"" ++ replaceExtension (replaceDirectory infile outdir) (makeExt a) ++ "\""]
+        let outfile = replaceExtension (replaceDirectory infile outdir) (makeExt a)
+        return $ ["-i", infile]
+              ++ ["-n"]
+              ++ ["-nostdin"]
+              ++ ["-v", "error"]
+              ++ ["-progress", fpath probe ++ ".tmp"]
+              ++ makeArgs a probe
+              ++ [outfile]
 
 data LoadedCfg = forall a. (Config a) => LoadedCfg a
 

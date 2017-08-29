@@ -2,18 +2,19 @@ module FFmpeg.Process where
 
 import           Control.Exception
 import           Control.Monad.Extra
+import           Control.Monad.Trans.Class as MT
+import           Control.Monad.Trans.State as MT
+import           Data.Foldable             as F
+import qualified Data.List                 as L
+import           Data.Maybe
+import           Data.Monoid
 import           Debug
 import           FFmpeg.Config
 import           FFmpeg.Probe
 import           System.Directory
+import           System.Environment
 import           System.Exit
 import           System.IO                 as IO
--- import           System.Power
-import           Control.Monad.Trans.Class as MT
-import           Control.Monad.Trans.State as MT
-import           Data.Foldable             as F
-import           Data.Maybe
-import           Data.Monoid
 import           System.Process
 import           Text.Printf
 import           Text.Regex
@@ -57,18 +58,23 @@ spawnFFmpeg :: Config a => a -> Probe -> FilePath -> IO FFmpegProcess
 spawnFFmpeg config pro outdir = do
     let tmpf = fpath pro ++ ".tmp"
     -- make arg
+    ffmpegBin <- getEnv "bin_ffmpeg"
     args <- fullArgs config pro outdir
-    let strargs = unwords args
+    let strargs = showCommandForUser ffmpegBin args
+    let infile = args L.!! 1
     let outfile = last args
+    when (infile == outfile) $ do
+        errorRed "The input file is the same as the output file"
+        exitFailure
     oexists <- doesFileExist outfile
     texists <- doesFileExist tmpf
     when texists (removeFile tmpf)
-    when (oexists && False) $ do
+    when (oexists && True) $ do
         errorYellow $ "File " ++ outfile ++ " exists. Will overwrite."
         removeFile outfile
-    when (oexists && not False) (errorYellow $ "File " ++ outfile ++ " exists.")
+    when (oexists && not True) (errorYellow $ "File " ++ outfile ++ " exists.")
 
-    let p = (shell strargs) {
+    let p = (proc ffmpegBin args ) {
           std_out = NoStream
         , std_err = Inherit
         , std_in  = CreatePipe
