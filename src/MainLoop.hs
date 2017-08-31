@@ -72,7 +72,7 @@ loop :: StateT FFmpegProcess IO ()
 loop = forever $ M.handle onAnyException $ do
     checkCommand
     checkProgress
-    MT.lift $ threadDelay (1000000 `div` 10)
+    MT.lift $ threadDelay (1000000 `div` 100)
 
 checkCommand :: StateT FFmpegProcess IO ()
 checkCommand = do
@@ -91,9 +91,13 @@ checkProgress = do
         Nothing -> printFFmpegProgress
         Just k  -> MT.lift $ do
             errorYellow $ "Ffmpeg exited with code " ++ show k
-            let tmpfp = progressFilePath rd
-            exists <- doesFileExist tmpfp
-            when exists (removeFile tmpfp)
+            case progressFileHandle rd of
+                Nothing -> return ()
+                Just tmphd -> do
+                    let tmpfp = progressFilePath rd
+                    hClose tmphd
+                    exists <- doesFileExist tmpfp
+                    when exists (removeFile tmpfp)
             exitWith k
 
 shutdown :: StateT FFmpegProcess IO ()

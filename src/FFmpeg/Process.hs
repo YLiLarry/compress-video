@@ -113,7 +113,8 @@ getCurrentPercentage = do
     oldpc <- MT.get
     let fp = progressFilePath oldpc
     let hd = progressFileHandle oldpc
-    when (isNothing hd) $ do
+    exists <- MT.lift $ doesFileExist fp
+    when (isNothing hd && exists) $ do
         hd' <- MT.lift $ openFile fp ReadMode
         MT.put oldpc {
             progressFileHandle = Just hd'

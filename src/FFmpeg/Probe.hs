@@ -69,25 +69,18 @@ instance FromJSON Probe where
 ffprobe :: FilePath -> IO Probe
 ffprobe file = do
     ffprobeBin <- getEnv "bin_ffprobe"
-    let args = unwords $
-                [ffprobeBin]
-                ++ ["-v", "quiet"]
-                ++ ["-of", "json"]
-                ++ ["-show_format"]
-                ++ ["-show_streams"]
-                ++ ["\"" ++ file ++ "\""]
-    errorYellow args
-    (_,Just out,Just err,h) <- createProcess $ (shell args) {
+    let args = ["-v", "quiet"]
+            ++ ["-of", "json"]
+            ++ ["-show_format"]
+            ++ ["-show_streams"]
+            ++ [file]
+    errorYellow $ showCommandForUser ffprobeBin args
+    (_,Just out,_,h) <- createProcess $ (proc ffprobeBin args) {
         std_out = CreatePipe,
-        std_err = CreatePipe
+        std_err = Inherit
     }
-    s <- hGetContents err
     b <- B.hGetContents out
     case eitherDecode b of
         Right r -> return r
-        Left er -> do
-            errorYellow $ printf
-                "FFProbe Output:\n%s Error: ffprobe %s\n %s\nProbe: Cannot read the video info.\nDecode: %s\n"
-                s args (show b) er
-            exitFailure
+        Left er -> exitFailure
 
