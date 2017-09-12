@@ -56,13 +56,13 @@ getFFmpegExitCode = getProcessExitCode . procHandle
 
 spawnFFmpeg :: Config a => a -> Probe -> FilePath -> IO FFmpegProcess
 spawnFFmpeg config pro outdir = do
-    let tmpf = fpath pro ++ ".tmp"
     -- make arg
     ffmpegBin <- getEnv "bin_ffmpeg"
     args <- fullArgs config pro outdir
     let strargs = showCommandForUser ffmpegBin args
     let infile = args L.!! 1
     let outfile = last args
+    let tmpf = outfile ++ ".tmp"
     when (infile == outfile) $ do
         errorRed "The input file is the same as the output file"
         exitFailure
