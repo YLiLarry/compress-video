@@ -41,6 +41,8 @@ killFFmpeg ffp = do
    -- remove file
    let out = outPath ffp
    let tmp = progressFilePath ffp
+   let tmph = progressFileHandle ffp
+   when (isJust tmph) (hClose $ fromJust tmph)
    whenM (doesFileExist out) (removeFile out)
    whenM (doesFileExist tmp) (removeFile tmp)
 

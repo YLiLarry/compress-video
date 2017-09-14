@@ -21,7 +21,7 @@ class Config a where
               ++ ["-n"]
               ++ ["-nostdin"]
               ++ ["-v", "error"]
-              ++ ["-progress", fpath probe ++ ".tmp"]
+              ++ ["-progress", outfile ++ ".tmp"]
               ++ makeArgs a probe
               ++ [outfile]
 
