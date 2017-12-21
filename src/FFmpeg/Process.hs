@@ -59,7 +59,7 @@ getFFmpegExitCode = getProcessExitCode . procHandle
 spawnFFmpeg :: Config a => a -> Probe -> FilePath -> IO FFmpegProcess
 spawnFFmpeg config pro outdir = do
     -- make arg
-    ffmpegBin <- getEnv "bin_ffmpeg"
+    let ffmpegBin = "ffmpeg"
     args <- fullArgs config pro outdir
     let strargs = showCommandForUser ffmpegBin args
     let infile = args L.!! 1

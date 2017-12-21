@@ -68,7 +68,7 @@ instance FromJSON Probe where
 
 ffprobe :: FilePath -> IO Probe
 ffprobe file = do
-    ffprobeBin <- getEnv "bin_ffprobe"
+    let ffprobeBin = "ffprobe"
     let args = ["-v", "quiet"]
             ++ ["-of", "json"]
             ++ ["-show_format"]
