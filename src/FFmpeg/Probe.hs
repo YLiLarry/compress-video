@@ -13,6 +13,12 @@ import           System.Exit
 import           System.IO
 import           System.Process
 import           Text.Printf
+import           System.FilePath
+
+bin :: String -> IO String
+bin s = do
+   path <- getEnv "compress_video_bin"
+   return (path </> s)
 
 data Probe = Probe {
     fpath        :: String,
@@ -68,7 +74,7 @@ instance FromJSON Probe where
 
 ffprobe :: FilePath -> IO Probe
 ffprobe file = do
-    let ffprobeBin = "ffprobe"
+    ffprobeBin <- bin "ffprobe"
     let args = ["-v", "quiet"]
             ++ ["-of", "json"]
             ++ ["-show_format"]
